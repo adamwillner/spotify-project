@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_spotify_charts
+    columns:
+      - name: artist_name
+        tests:
+          - not_null
+      - name: song_name
+        tests:
+          - not_null
+      - name: peak_position
+        tests:
+          - not_null
+
+  - name: dim_artist
+    columns:
+      - name: artist_id
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_song
+    columns:
+      - name: song_id
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_chart_performance
+    columns:
+      - name: artist_id
+        tests:
+          - not_null
+      - name: song_id
+        tests:
+          - not_null
