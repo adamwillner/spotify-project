@@ -1,15 +1,29 @@
-Welcome to your new dbt project!
+# Spotify Chart Analytics (dbt + Snowflake)
 
-### Using the starter project
+A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" dataset into a star schema for analysis, using a bronze/silver/gold medallion architecture on Snowflake.
 
-Try running the following commands:
-- dbt run
-- dbt test
+## Architecture
 
+- **Bronze** (`bronze.spotify_charts_raw`) — raw CSV load, untouched.
+- **Silver** (`silver.stg_spotify_charts`) — cleaned and typed staging model.
+- **Gold** (`gold.*`) — star schema for analysis:
+  - `dim_artist`, `dim_song` — dimension tables with surrogate keys
+  - `fct_chart_performance` — chart metrics (peak position, weeks charted, streams) joined to both dimensions
 
-### Resources:
-- Learn more about dbt [in the docs](https://docs.getdbt.com/docs/introduction)
-- Check out [Discourse](https://discourse.getdbt.com/) for commonly asked questions and answers
-- Join the [chat](https://community.getdbt.com/) on Slack for live discussions and support
-- Find [dbt events](https://events.getdbt.com) near you
-- Check out [the blog](https://blog.getdbt.com/) for the latest news on dbt's development and best practices
+## Data notes
+
+- `dim_song`'s key is hashed from `artist_name + song_name`, since song titles alone collide across different artists.
+- There's no date dimension — the source data is pre-aggregated lifetime totals per song, not time-series data.
+- Surrogate keys are hashed from text (names), not stable source IDs, so a corrected name would break historical links.
+
+## CI
+
+A GitHub Actions workflow (`.github/workflows/dbt_test.yml`) runs `dbt build` against Snowflake on every push to `main`.
+
+## Running locally
+
+```
+dbt deps
+dbt run
+dbt test
+```
