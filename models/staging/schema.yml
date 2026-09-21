@@ -35,3 +35,16 @@ models:
       - name: song_id
         tests:
           - not_null
+
+  - name: genre_performance
+    columns:
+      - name: genre
+        tests:
+          - not_null
+          - unique
+      - name: nr_of_songs
+        tests:
+          - not_null
+      - name: total_streams
+        tests:
+          - not_null
