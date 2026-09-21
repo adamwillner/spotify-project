@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: dim_artist
+    columns:
+      - name: artist_id
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_song
+    columns:
+      - name: song_id
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_chart_performance
+    columns:
+      - name: artist_id
+        tests:
+          - not_null
+      - name: song_id
+        tests:
+          - not_null
+
+  - name: genre_performance
+    columns:
+      - name: genre
+        tests:
+          - not_null
+          - unique
+      - name: nr_of_songs
+        tests:
+          - not_null
+      - name: total_streams
+        tests:
+          - not_null

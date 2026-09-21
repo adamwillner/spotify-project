@@ -20,6 +20,18 @@ A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" datas
 - There's no date dimension — the source data is pre-aggregated lifetime totals per song, not time-series data.
 - Surrogate keys are hashed from text (names), not stable source IDs, so a corrected name would break historical links.
 
+## Tests
+
+- **Generic tests** (in `models/staging/schema.yml` and `models/marts/schema.yml`):
+  - `not_null` on key columns in staging, the fact table and `genre_performance`
+  - `unique` + `not_null` on the dimension keys (`dim_artist.artist_id`, `dim_song.song_id`) and on `genre_performance.genre`
+- **Singular tests** (in `tests/`):
+  - `top10_not_longer_than_charted` — fails if any song has more weeks in the top 10 than weeks on the chart overall
+
+## Macros
+
+- `generate_schema_name` — overrides dbt's default so models land in clean `bronze`/`silver`/`gold` schemas instead of `<target>_silver` etc.
+
 ## CI
 
 A GitHub Actions workflow (`.github/workflows/dbt_test.yml`) runs `dbt build` against Snowflake on every push to `main`.
