@@ -2,13 +2,29 @@ version: 2
 
 models:
   - name: stg_spotify_charts
+    description: "Cleaned and typed version of the raw Spotify chart data. One row per song."
     columns:
       - name: artist_name
+        description: "Artist name. Missing values are recovered from artist_and_title."
         tests:
           - not_null
       - name: song_name
+        description: "Song title."
         tests:
           - not_null
+      - name: lyrics
+        description: "Full song lyrics."
       - name: peak_position
+        description: "Best chart position the song reached."
         tests:
           - not_null
+      - name: weeks_at_peak
+        description: "Weeks spent at the peak position. Cleaned from values like '(x13)'; defaults to 1 when empty."
+      - name: weeks_charted
+        description: "Total weeks the song was on the chart."
+      - name: weeks_top10
+        description: "Weeks the song spent in the top 10."
+      - name: peak_week_streams
+        description: "Streams during the song's best week."
+      - name: total_streams
+        description: "Lifetime total streams while charting."
