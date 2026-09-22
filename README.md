@@ -25,12 +25,24 @@ A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" datas
 - **Generic tests** (in `models/staging/schema.yml` and `models/marts/schema.yml`):
   - `not_null` on key columns in staging, the fact table and `genre_performance`
   - `unique` + `not_null` on the dimension keys (`dim_artist.artist_id`, `dim_song.song_id`) and on `genre_performance.genre`
+  - `relationships` on `fct_chart_performance.artist_id` and `song_id` — every fact row must point to an existing dimension row
 - **Singular tests** (in `tests/`):
   - `top10_not_longer_than_charted` — fails if any song has more weeks in the top 10 than weeks on the chart overall
 
 ## Macros
 
 - `generate_schema_name` — overrides dbt's default so models land in clean `bronze`/`silver`/`gold` schemas instead of `<target>_silver` etc.
+- `strip_brackets` — cleans `weeks_at_peak` values like `(x13)` into a number, defaulting to 1 when empty
+- `fill_artist_name` — uses `artist_name`, falling back to the artist part of `artist_and_title` when it's empty
+
+## Documentation
+
+Every model and column has a description in the `schema.yml` files. Browse them, plus the lineage graph, with:
+
+```
+dbt docs generate
+dbt docs serve
+```
 
 ## CI
 
