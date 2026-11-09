@@ -1,14 +1,14 @@
 # Spotify Chart Analytics (dbt + Snowflake)
 
-A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" dataset into a star schema for analysis, using a bronze/silver/gold medallion architecture on Snowflake.
+A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" dataset into a star schema for analysis, using a layered raw → staging → marts architecture on Snowflake (the dbt naming convention; equivalent to bronze/silver/gold in medallion terms).
 
 ## Architecture
 
-- **Bronze** — raw inputs, untouched:
+- **Raw** (`raw.*`) — raw inputs, untouched:
   - `spotify_charts_raw` — raw CSV load
   - `artist_genres` — seed (hand-made CSV in `seeds/`) mapping top artists to a genre
-- **Silver** (`silver.stg_spotify_charts`) — cleaned and typed staging model.
-- **Gold** (`gold.*`) — star schema and marts for analysis:
+- **Staging** (`staging.stg_spotify_charts`) — cleaned and typed staging model.
+- **Marts** (`marts.*`) — star schema and marts for analysis:
   - `dim_artist`, `dim_song` — dimension tables with surrogate keys
   - `fct_chart_performance` — chart metrics (peak position, weeks charted, streams) joined to both dimensions
   - `genre_performance` — total streams and song count per genre (artists not in the seed are grouped as `Unclassified`)
@@ -31,7 +31,7 @@ A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" datas
 
 ## Macros
 
-- `generate_schema_name` — overrides dbt's default so models land in clean `bronze`/`silver`/`gold` schemas instead of `<target>_silver` etc.
+- `generate_schema_name` — overrides dbt's default so models land in clean `raw`/`staging`/`marts` schemas instead of `<target>_staging` etc.
 - `strip_brackets` — cleans `weeks_at_peak` values like `(x13)` into a number, defaulting to 1 when empty
 - `fill_artist_name` — uses `artist_name`, falling back to the artist part of `artist_and_title` when it's empty
 

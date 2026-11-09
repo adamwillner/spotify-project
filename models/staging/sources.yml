@@ -3,6 +3,6 @@ version: 2
 sources:
   - name: spotify_raw
     database: spotify_db
-    schema: bronze
+    schema: raw
     tables:
       - name: spotify_charts_raw

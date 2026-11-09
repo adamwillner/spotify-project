@@ -32,11 +32,11 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   spotify_project:
     staging:
-      +schema: silver
+      +schema: staging
     marts:
-      +schema: gold
+      +schema: marts
       +materialized: table
 
 seeds:
   spotify_project:
-    +schema: bronze
+    +schema: raw
