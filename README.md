@@ -24,7 +24,8 @@ A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" datas
 
 - `dim_song`'s key is hashed from `artist_name + song_name`, since song titles alone collide across different artists.
 - Genre is an attribute of the artist, so it lives on `dim_artist`, not in the fact table.
-- Artists outside the top 300, not found in MusicBrainz (search score below 90), or without genres are `Unclassified`.
+- `dim_artist.genre` is one of 8 broad genres (Pop, Hip-Hop, R&B, Latin, Rock, Electronic, Country, Afrobeats), `Other` (found in MusicBrainz, but none of its genres are in the mapping), or `Unclassified` (outside the top 300, not found, or no genres in MusicBrainz). The 8 groups are a deliberate choice: few and broad, so each has enough artists to compare. Changing them only means editing the seed and the `accepted_values` tests.
+- MusicBrainz matching: a search hit only counts if its score is 90+ **and** its name or one of its aliases is exactly the chart's artist name (this rejects e.g. "Kanye West Tribute Band"). Of the top 300 artists, 278 were found and 268 have genres. Ambiguous names can still match the wrong artist (e.g. BTS member Jin matched rapper MC Jin).
 - There's no date dimension — the source data is pre-aggregated lifetime totals per song, not time-series data.
 - Surrogate keys are hashed from text (names), not stable source IDs, so a corrected name would break historical links.
 
@@ -37,7 +38,7 @@ A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" datas
   - `accepted_values` on `dim_artist.genre` and `int_artist_genre.genre` — catches typos in the genre mapping
 - **Singular tests** (in `tests/`):
   - `top10_not_longer_than_charted` — fails if any song has more weeks in the top 10 than weeks on the chart overall
-  - `unmapped_musicbrainz_genres` — *warns* (doesn't fail) when MusicBrainz returned genres the mapping seed doesn't cover, listing which ones to add
+  - `unmapped_musicbrainz_genres` — *warns* (doesn't fail) when MusicBrainz returned genres with 5+ votes that the mapping seed doesn't cover, listing which ones to add
 
 ## Macros
 
