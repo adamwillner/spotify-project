@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: int_artist_genre
+    description: "One broad genre per artist, chosen as the broad genre with the most MusicBrainz votes. Only artists found in MusicBrainz with at least one genre."
+    columns:
+      - name: artist_name
+        description: "Artist name as it appears in the chart data."
+        tests:
+          - unique
+          - not_null
+      - name: genre
+        description: "Broad genre, from the genre_mapping seed. 'Other' when none of the artist's genres are mapped."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Pop', 'Hip-Hop', 'R&B', 'Latin', 'Rock', 'Electronic', 'Country', 'Afrobeats', 'Other']

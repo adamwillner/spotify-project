@@ -33,6 +33,8 @@ models:
   spotify_project:
     staging:
       +schema: staging
+    intermediate:
+      +schema: intermediate
     marts:
       +schema: marts
       +materialized: table

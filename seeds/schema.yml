@@ -1,0 +1,15 @@
+version: 2
+
+seeds:
+  - name: genre_mapping
+    description: "Hand-made mapping from detailed MusicBrainz genres to a few broad genres. Extend it when the unmapped_musicbrainz_genres test warns."
+    columns:
+      - name: musicbrainz_genre
+        description: "Genre name exactly as MusicBrainz returns it (lowercase)."
+        tests:
+          - unique
+          - not_null
+      - name: genre
+        description: "Broad genre used in dim_artist."
+        tests:
+          - not_null

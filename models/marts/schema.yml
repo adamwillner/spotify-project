@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_artist
-    description: "One row per artist. Surrogate key is a hash of artist_name."
+    description: "One row per artist, with a broad genre from MusicBrainz. Surrogate key is a hash of artist_name."
     columns:
       - name: artist_id
         description: "Surrogate key, hashed from artist_name."
@@ -11,6 +11,13 @@ models:
           - not_null
       - name: artist_name
         description: "Artist name as it appears in the source data."
+      - name: genre
+        description: "Broad genre from MusicBrainz (via int_artist_genre). 'Unclassified' when the artist isn't among the top artists looked up, wasn't found, or has no genres."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Pop', 'Hip-Hop', 'R&B', 'Latin', 'Rock', 'Electronic', 'Country', 'Afrobeats', 'Other', 'Unclassified']
 
   - name: dim_song
     description: "One row per song. Keyed on artist + song, because 423 song titles are shared by different artists."
@@ -58,20 +65,3 @@ models:
         description: "Lifetime total streams while charting."
       - name: lyrics_char_count
         description: "Number of characters in the lyrics."
-
-  - name: genre_performance
-    description: "Total streams and song count per genre. Genres come from the artist_genres seed; artists not in the seed are grouped as 'Unclassified'."
-    columns:
-      - name: genre
-        description: "Genre from the artist_genres seed, or 'Unclassified'."
-        tests:
-          - not_null
-          - unique
-      - name: nr_of_songs
-        description: "Number of charting songs in the genre."
-        tests:
-          - not_null
-      - name: total_streams
-        description: "Sum of total streams for all songs in the genre."
-        tests:
-          - not_null

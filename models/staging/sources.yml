@@ -6,3 +6,5 @@ sources:
     schema: raw
     tables:
       - name: spotify_charts_raw
+      - name: musicbrainz_artist_genres
+        description: "Artist genres from the MusicBrainz API, one row per artist + genre. Loaded once by extract/musicbrainz_genres.py and setup/03_musicbrainz.sql."
