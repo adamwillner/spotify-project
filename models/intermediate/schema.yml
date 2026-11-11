@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_artist_genre
-    description: "One broad genre per artist, chosen as the broad genre with the most MusicBrainz votes. Only artists found in MusicBrainz with at least one genre."
+    description: "One broad genre and one sub-genre per artist, chosen by MusicBrainz votes. Only artists found in MusicBrainz with at least one genre."
     columns:
       - name: artist_name
         description: "Artist name as it appears in the chart data."
@@ -16,3 +16,7 @@ models:
           - accepted_values:
               arguments:
                 values: ['Pop', 'Hip-Hop', 'R&B', 'Latin', 'Rock', 'Electronic', 'Country', 'Afrobeats', 'Other']
+      - name: sub_genre
+        description: "Detailed MusicBrainz genre with the most votes within the artist's genre (e.g. 'trap' under Hip-Hop). Skips a sub-genre that just repeats the genre, unless it's the only one."
+        tests:
+          - not_null

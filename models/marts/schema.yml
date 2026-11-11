@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_artist
-    description: "One row per artist, with a broad genre from MusicBrainz. Surrogate key is a hash of artist_name."
+    description: "One row per artist, with a genre and sub-genre from MusicBrainz. Surrogate key is a hash of artist_name."
     columns:
       - name: artist_id
         description: "Surrogate key, hashed from artist_name."
@@ -18,6 +18,10 @@ models:
           - accepted_values:
               arguments:
                 values: ['Pop', 'Hip-Hop', 'R&B', 'Latin', 'Rock', 'Electronic', 'Country', 'Afrobeats', 'Other', 'Unclassified']
+      - name: sub_genre
+        description: "Detailed MusicBrainz genre within the genre (e.g. 'trap' under Hip-Hop), lowercase as MusicBrainz writes it. 'Unclassified' when the genre is Unclassified. Drill-down hierarchy: genre -> sub_genre -> artist -> song."
+        tests:
+          - not_null
 
   - name: dim_song
     description: "One row per song. Keyed on artist + song, because 423 song titles are shared by different artists."

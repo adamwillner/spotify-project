@@ -14,9 +14,9 @@ A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" datas
   - `musicbrainz_artist_genres` — the MusicBrainz extract, one row per artist + genre, loaded by `setup/03_musicbrainz.sql`
   - `genre_mapping` — seed (hand-made CSV in `seeds/`) mapping detailed MusicBrainz genres (e.g. `trap`, `dance-pop`) to broad genres (Hip-Hop, Pop)
 - **Staging** (`staging.*`) — one cleaned and typed model per source: `stg_spotify_charts`, `stg_musicbrainz_artist_genres`.
-- **Intermediate** (`intermediate.int_artist_genre`) — picks one broad genre per artist: maps each MusicBrainz genre with the seed, adds up the votes per broad genre and keeps the top one.
+- **Intermediate** (`intermediate.int_artist_genre`) — picks one genre and one sub-genre per artist: maps each MusicBrainz genre to a broad genre with the seed, keeps the broad genre with the most votes, then the most-voted detailed genre within it as sub-genre (e.g. Hip-Hop → trap).
 - **Marts** (`marts.*`) — star schema for analysis:
-  - `dim_artist` — one row per artist with its broad genre (`Unclassified` when there is none)
+  - `dim_artist` — one row per artist with its genre and sub-genre (`Unclassified` when there is none). Together with `dim_song` this gives a drill-down hierarchy: genre → sub-genre → artist → song, like category → subcategory → brand → product in a product catalogue.
   - `dim_song` — one row per song
   - `fct_chart_performance` — chart metrics (peak position, weeks charted, streams), linked to both dimensions
 
