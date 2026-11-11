@@ -17,8 +17,7 @@ select
     staged.weeks_at_peak,
     staged.weeks_charted,
     staged.weeks_top10,
-    staged.total_streams,
-    len(songs.lyrics) as lyrics_char_count
+    staged.total_streams
 from staged
 left join artists on staged.artist_name = artists.artist_name
 left join songs
