@@ -1,100 +1,90 @@
-# Spotify Chart Analytics (dbt + Snowflake)
+# Spotify Chart Analytics · dbt + Snowflake
 
-A dbt project that turns the Kaggle "Spotify Global Chart Totals & Lyrics" dataset into a star schema for analysis, enriched with artist genres from the MusicBrainz API, using a layered raw → staging → intermediate → marts architecture on Snowflake (the dbt naming convention; equivalent to bronze/silver/gold in medallion terms).
+[![dbt build](https://github.com/adamwillner/spotify-project/actions/workflows/dbt_test.yml/badge.svg)](https://github.com/adamwillner/spotify-project/actions/workflows/dbt_test.yml)
 
-**Stack:** Snowflake · dbt-core 1.12 (dbt-snowflake) · dbt_utils · Python (requests) · GitHub Actions
+Turns 8,000+ Spotify chart songs into a tested star schema, enriched with artist genres from an open API, ready for Power BI.
 
-**Data source:** [Spotify Global Chart Totals & Lyrics](https://www.kaggle.com/datasets/batudev/spotify-global-chart-totals-and-lyrics) on Kaggle: about 8,000 songs that appeared on Spotify's Global Weekly Chart, with lifetime chart stats, streams and lyrics. Artist genres come from [MusicBrainz](https://musicbrainz.org/doc/MusicBrainz_API), an open music database.
+## Pipeline
 
-## Architecture
-
-- **Extract** (`extract/musicbrainz_genres.py`) — one-time Python script that looks up the top 300 artists (~83 % of all streams) in the MusicBrainz API and writes their genres to a CSV.
-- **Raw** (`raw.*`) — raw inputs, untouched (all columns `varchar`):
-  - `spotify_charts_raw` — the Kaggle chart CSV, loaded by `setup/01_setup.sql`
-  - `musicbrainz_artist_genres` — the MusicBrainz extract, one row per artist + genre, loaded by `setup/03_musicbrainz.sql`
-  - `genre_mapping` — seed (hand-made CSV in `seeds/`) mapping detailed MusicBrainz genres (e.g. `trap`, `dance-pop`) to broad genres (Hip-Hop, Pop)
-- **Staging** (`staging.*`) — one cleaned and typed model per source: `stg_spotify_charts`, `stg_musicbrainz_artist_genres`.
-- **Intermediate** (`intermediate.int_artist_genre`) — picks one genre and one sub-genre per artist: maps each MusicBrainz genre to a broad genre with the seed, keeps the broad genre with the most votes, then the most-voted detailed genre within it as sub-genre (e.g. Hip-Hop → trap).
-- **Marts** (`marts.*`) — star schema for analysis:
-  - `dim_artist` — one row per artist with its genre and sub-genre (`Unclassified` when there is none). Together with `dim_song` this gives a drill-down hierarchy: genre → sub-genre → artist → song, like category → subcategory → brand → product in a product catalogue.
-  - `dim_song` — one row per song
-  - `fct_chart_performance` — chart metrics (peak position, weeks charted, streams), linked to both dimensions
-
-## Data notes
-
-- `dim_song`'s key is hashed from `artist_name + song_name`, since song titles alone collide across different artists.
-- Genre is an attribute of the artist, so it lives on `dim_artist`, not in the fact table.
-- `dim_artist.genre` is one of 8 broad genres (Pop, Hip-Hop, R&B, Latin, Rock, Electronic, Country, Afrobeats), `Other` (found in MusicBrainz, but none of its genres are in the mapping), or `Unclassified` (outside the top 300, not found, or no genres in MusicBrainz). The 8 groups are a deliberate choice: few and broad, so each has enough artists to compare. Changing them only means editing the seed and the `accepted_values` tests.
-- MusicBrainz matching: a search hit only counts if its score is 90+ **and** its name or one of its aliases is exactly the chart's artist name (this rejects e.g. "Kanye West Tribute Band"). Of the top 300 artists, 288 were found and 278 have genres. Ambiguous names can still match the wrong artist (e.g. BTS member Jin matched rapper MC Jin).
-- There's no date dimension — the source data is pre-aggregated lifetime totals per song, not time-series data.
-- Surrogate keys are hashed from text (names), not stable source IDs, so a corrected name would break historical links.
-
-## Tests
-
-- **Generic tests** (in the `schema.yml` files):
-  - `unique` + `not_null` on the dimension keys (`dim_artist.artist_id`, `dim_song.song_id`), on `int_artist_genre.artist_name` and on the seed's `musicbrainz_genre`
-  - `not_null` on key columns in staging and the fact table
-  - `relationships` on `fct_chart_performance.artist_id` and `song_id` — every fact row must point to an existing dimension row
-  - `accepted_values` on `dim_artist.genre` and `int_artist_genre.genre` — catches typos in the genre mapping
-- **Singular tests** (in `tests/`):
-  - `top10_not_longer_than_charted` — fails if any song has more weeks in the top 10 than weeks on the chart overall
-  - `unmapped_musicbrainz_genres` — *warns* (doesn't fail) when MusicBrainz returned genres with 5+ votes that the mapping seed doesn't cover, listing which ones to add
-
-## Macros
-
-- `generate_schema_name` — overrides dbt's default so models land in clean `raw`/`staging`/`intermediate`/`marts` schemas instead of `<target>_staging` etc.
-- `clean_weeks_at_peak` — cleans `weeks_at_peak` values like `(x13)` into a number, defaulting to 1 when empty
-- `fill_artist_name` — uses `artist_name`, falling back to the artist part of `artist_and_title` when it's empty
-
-## Documentation
-
-Every model and column has a description in the `schema.yml` files. Browse them, plus the lineage graph, with:
-
-```
-dbt docs generate
-dbt docs serve
+```mermaid
+flowchart LR
+    K["Kaggle CSV<br/>8,058 songs"] --> R
+    M["MusicBrainz API<br/>top 300 artists"] -->|Python extract| R
+    subgraph SF["Snowflake · dbt"]
+        R[("raw")] --> S[("staging")] --> I[("intermediate")] --> MA[("marts")]
+        G["genre_mapping<br/>seed"] --> I
+    end
+    MA --> P["Power BI"]
 ```
 
-## CI
+*raw → staging → marts is dbt's naming; the same idea as bronze → silver → gold.*
 
-A GitHub Actions workflow (`.github/workflows/dbt_test.yml`) runs `dbt build` against Snowflake on every push to `main`.
+## Star schema
 
-## Setup from scratch
-
-**1. Snowflake objects and raw data.** Run `setup/01_setup.sql` in a Snowsight worksheet. It creates the warehouse (`my_wh`, X-Small, auto-suspend 60 s), the database `spotify_db`, the `raw` schema, a CSV file format, an internal stage and the raw table. Before the final `COPY INTO`, download the CSV from Kaggle and upload it to the stage `spotify_db.raw.spotify_stage` in Snowsight. The script is idempotent: it can be re-run safely, and `COPY INTO` skips files already loaded.
-
-**2. Access control.** Run `setup/02_roles.sql` (replace `<your_user>` with your Snowflake username). It creates a `transformer` role with only the privileges dbt needs: read access to `raw`, permission to create the `staging`, `intermediate` and `marts` schemas, and use of the warehouse (least privilege). dbt, locally and in CI, runs as this role instead of ACCOUNTADMIN.
-
-**3. Artist genres (optional to re-run).** Put the Kaggle CSV at `data/data.csv` and run `python extract/musicbrainz_genres.py` (about 11 minutes; MusicBrainz allows ~1 request per second). Then run `setup/03_musicbrainz.sql`, uploading `data/musicbrainz_artist_genres.csv` to `spotify_db.raw.musicbrainz_stage` before the `COPY INTO`. The `data/` folder is git-ignored.
-
-**4. Authentication.** dbt connects with key-pair authentication (Snowflake no longer allows password-only logins). Register your public key on your Snowflake user:
-
-```sql
-alter user <your_user> set rsa_public_key = '<public key, without the BEGIN/END lines>';
+```mermaid
+erDiagram
+    DIM_ARTIST ||--o{ FCT_CHART_PERFORMANCE : artist_id
+    DIM_SONG ||--o{ FCT_CHART_PERFORMANCE : song_id
+    DIM_ARTIST {
+        string artist_id PK
+        string artist_name
+        string genre
+        string sub_genre
+    }
+    DIM_SONG {
+        string song_id PK
+        string artist_name
+        string song_name
+        string lyrics
+    }
+    FCT_CHART_PERFORMANCE {
+        string artist_id FK
+        string song_id FK
+        number total_streams
+        number peak_position
+        number weeks_at_peak
+        number weeks_charted
+        number weeks_top10
+    }
 ```
 
-**5. dbt profile.** Add this to `~/.dbt/profiles.yml`:
+**Drill-down:** Genre → Sub-genre → Artist → Song, like Category → Subcategory → Brand → Product in a product catalogue.
 
-```yaml
-spotify_project:
-  target: dev
-  outputs:
-    dev:
-      type: snowflake
-      account: <orgname-accountname>
-      user: <your_user>
-      private_key_path: <path to rsa_key.p8>
-      role: transformer
-      warehouse: my_wh
-      database: spotify_db
-      schema: staging
-      threads: 4
+## At a glance
+
+| | |
+|---|---|
+| Songs | **8,058** |
+| Artists | **1,795** |
+| Artists looked up in MusicBrainz | **300** (~83 % of streams) |
+| Artists with a genre | **278**, covering **~80 % of streams** |
+| Broad genres | **8** + Other + Unclassified |
+| Tests | Keys, relationships and allowed values, on every build |
+| CI | `dbt build` on every push to `main` |
+
+## Stack
+
+Snowflake · dbt-core 1.12 · dbt_utils · Python · GitHub Actions · Power BI
+
+## Where to find things
+
+| Folder | What's in it |
+|---|---|
+| [`setup/`](setup/README.md) | Snowflake setup scripts and **how to build it from scratch** |
+| [`extract/`](extract/README.md) | The MusicBrainz API extract: how matching works, coverage, limitations |
+| [`models/`](models/README.md) | The dbt models layer by layer, genre logic, tests and data notes |
+| `seeds/` | `genre_mapping.csv`: detailed MusicBrainz genres → 8 broad genres |
+| `macros/` | Reusable SQL: schema naming, `(x13)` cleanup, missing-artist fallback |
+| `tests/` | Custom tests, incl. a warning for unmapped genres |
+
+## Quick start
+
+```
+dbt deps
+dbt build
+dbt docs generate && dbt docs serve   # docs + lineage graph
 ```
 
-**6. Build.**
+First time? See [setup/README.md](setup/README.md).
 
-```
-dbt debug   # check the connection
-dbt deps    # install dbt_utils
-dbt build   # seeds, models and tests, in order
-```
+**Data:** [Spotify Global Chart Totals & Lyrics](https://www.kaggle.com/datasets/batudev/spotify-global-chart-totals-and-lyrics) (Kaggle) · genres from [MusicBrainz](https://musicbrainz.org/doc/MusicBrainz_API)
